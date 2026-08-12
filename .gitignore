@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -216,3 +217,25 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+=======
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+database/*.db
+
+
+.data/
+.gpt/
+.logs/
+.prev/
+.tmp/
+.vscode/
+data/
+database/
+logs/
+temp
+
+>>>>>>> b68a81e (this is first papertrading system)
