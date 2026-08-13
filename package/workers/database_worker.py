@@ -5,10 +5,6 @@ from package.logger import get_logger
 
 
 class DatabaseWorker:
-    #TODO FUTURE:
-    #   def __init_(self, queue, db, ...): 
-    #       pass
-    #   jab sqlite ki jagah mysql ya postgresql database ka use karunga
 
     def __init__(self, queue: Queue,  batch_size: int = 10, batch_timeout: int = 2): 
         self.queue = queue
@@ -63,8 +59,10 @@ class DatabaseWorker:
             )
 
             batch.clear()
+            
 
         except Exception:
             self.logger.exception(
                 "Database batch insert failed"
             )
+            
