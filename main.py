@@ -1,80 +1,24 @@
 from package import Client, default_correlation_id, default_mode, default_token_list
-from package.logger import setup_logging, get_logger
 from package.database import Database
 from package.tick import Tick
+from package.logger import setup_logging, get_logger
+
+from package.workers import DatabaseWorker, StrategyWorker
+
 import threading 
 from queue import Queue, Empty
 
 
 setup_logging()
 logger = get_logger(__name__)
-strategy_queue = Queue(maxsize=100000)
-database_queue = Queue(maxsize=100000)
+strategy_queue = Queue(maxsize=1000)
+database_queue = Queue(maxsize=1000)
+db_path = "database/papertrading.db"
 
-def database_worker():
-    """
-    consume ticks from queue and save them into database
-    """
-    logger.info("Database worker started")
-
-    db = Database()
-
-    batch = []
-    BATCH_SIZE = 10
-    BATCH_TIMEOUT = 2
+database_worker = DatabaseWorker(database_queue)                
+strategy_worker = StrategyWorker(strategy_queue)
 
 
-    while True:
-        
-        try:
-            tick = database_queue.get(timeout=BATCH_TIMEOUT)
-            batch.append(tick)
-
-            if len(batch)>=BATCH_SIZE:
-                db.insert_ticks(batch)
-
-                logger.debug(f"Database batch saved: {len(batch)} ticks")
-                batch.clear()
-            database_queue.task_done()
-
-        except Empty:
-            if batch:
-                try:
-                    db.insert_ticks(batch)
-                    logger.debug(f"Database Timeout Flush: {len(batch)} ticks")  
-                    batch.clear()
-                except Exception:
-                    logger.exception("Database timeout batch failed")
-
-                
-
-def strategy_worker():
-    """
-    Get Tick from strategy queue
-    and process strategy
-    """
-
-    logger.info("Strategy worker started")
-
-    while True:
-        tick = strategy_queue.get()
-
-        try:
-            logger.debug(f"Strategy received tick: {tick.token}")
-            # Example:
-            #
-            # signal = strategy.process(tick)
-            #
-            # if signal:
-            #     order_manager.execute(signal)
-        
-        except Exception:
-            logger.exception("Strategy processing failed")
-
-        finally:
-            strategy_queue.task_done()
-
-        
 def dispatch_tick(tick):
     strategy_queue.put(tick)
     database_queue.put(tick)
@@ -83,10 +27,10 @@ def dispatch_tick(tick):
 def main():
     logger.info("paper Trading application start>>>>>>>>>>>>>>>>>>>")
 
-    db_thread = threading.Thread(target=database_worker, daemon=True, name="DatabseWorker")
+    db_thread = threading.Thread(target=database_worker.run, daemon=True, name="DatabseWorker")
     db_thread.start()
 
-    strategy_thread = threading.Thread(target=strategy_worker, daemon=True, name="StrategyWorker")
+    strategy_thread = threading.Thread(target=strategy_worker.run, daemon=True, name="StrategyWorker")
     strategy_thread.start()
 
 

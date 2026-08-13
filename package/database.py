@@ -189,5 +189,6 @@ class Database:
         except Exception:
             self.connection.rollback()
             raise
+
     def close(self):
         self.connection.close()
