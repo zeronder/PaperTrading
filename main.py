@@ -3,7 +3,7 @@ from package.logger import setup_logging, get_logger
 from package.database import Database
 from package.tick import Tick
 import threading 
-from queue import Queue
+from queue import Queue, Empty
 
 
 setup_logging()
@@ -21,21 +21,32 @@ def database_worker():
 
     batch = []
     BATCH_SIZE = 10
+    BATCH_TIMEOUT = 2
+
 
     while True:
-        tick = database_queue.get()
+        
         try:
+            tick = database_queue.get(timeout=BATCH_TIMEOUT)
             batch.append(tick)
-            if len(batch)>=BATCH_SIZE:
-                for _tick in batch:
-                    db.insert_tick(_tick)
-                batch.clear()
 
-                logger.debug(f"Database batch saved: {BATCH_SIZE} ticks")
-        except Exception:
-            logger.exception("failed to save tick")
-        finally:
+            if len(batch)>=BATCH_SIZE:
+                db.insert_ticks(batch)
+
+                logger.debug(f"Database batch saved: {len(batch)} ticks")
+                batch.clear()
             database_queue.task_done()
+
+        except Empty:
+            if batch:
+                try:
+                    db.insert_ticks(batch)
+                    logger.debug(f"Database Timeout Flush: {len(batch)} ticks")  
+                    batch.clear()
+                except Exception:
+                    logger.exception("Database timeout batch failed")
+
+                
 
 def strategy_worker():
     """

@@ -70,8 +70,6 @@ class Database:
                 depth_20_buy_data TEXT,
                 depth_20_sell_data TEXT,
 
-                packet_received_time INTEGER,
-
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -112,79 +110,84 @@ class Database:
 
         self.connection.commit()
 
-
-    def insert_tick(self, tick):
+    def insert_ticks(self, ticks):
 
         cursor = self.connection.cursor()
 
-        cursor.execute("""
-            INSERT INTO ticks (
-                subscription_mode,
-                exchange_type,
-                token,
-                sequence_number,
-                exchange_timestamp,
-                last_traded_price,
-                subscription_mode_val,
-                last_traded_quantity,
-                average_traded_price,
-                volume_trade_for_the_day,
-                total_buy_quantity,
-                total_sell_quantity,
-                open_price_of_the_day,
-                high_price_of_the_day,
-                low_price_of_the_day,
-                closed_price,
-                last_traded_timestamp,
-                open_interest,
-                open_interest_change_percentage,
-                upper_circuit_limit,
-                lower_circuit_limit,
-                week_52_high_price,
-                week_52_low_price,
-                packet_received_time,
-                best_5_buy_data,
-                best_5_sell_data,
-                depth_20_buy_data,
-                depth_20_sell_data
-            )
-            VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?
-            )
-        """, (
-            tick.subscription_mode,
-            tick.exchange_type,
-            tick.token,
-            tick.sequence_number,
-            tick.exchange_timestamp,
-            tick.last_traded_price,
-            tick.subscription_mode_val,
-            tick.last_traded_quantity,
-            tick.average_traded_price,
-            tick.volume_trade_for_the_day,
-            tick.total_buy_quantity,
-            tick.total_sell_quantity,
-            tick.open_price_of_the_day,
-            tick.high_price_of_the_day,
-            tick.low_price_of_the_day,
-            tick.closed_price,
-            tick.last_traded_timestamp,
-            tick.open_interest,
-            tick.open_interest_change_percentage,
-            tick.upper_circuit_limit,
-            tick.lower_circuit_limit,
-            tick.week_52_high_price,
-            tick.week_52_low_price,
-            tick.packet_received_time,
-            json.dumps(tick.best_5_buy_data),
-            json.dumps(tick.best_5_sell_data),
-            json.dumps(tick.depth_20_buy_data),
-            json.dumps(tick.depth_20_sell_data),
-        ))
+        try:
+            for tick in ticks:
 
-        self.connection.commit()
+                cursor.execute("""
+                    INSERT INTO ticks (
+                        subscription_mode,
+                        exchange_type,
+                        token,
+                        sequence_number,
+                        exchange_timestamp,
+                        last_traded_price,
+                        subscription_mode_val,
+                        last_traded_quantity,
+                        average_traded_price,
+                        volume_trade_for_the_day,
+                        total_buy_quantity,
+                        total_sell_quantity,
+                        open_price_of_the_day,
+                        high_price_of_the_day,
+                        low_price_of_the_day,
+                        closed_price,
+                        last_traded_timestamp,
+                        open_interest,
+                        open_interest_change_percentage,
+                        upper_circuit_limit,
+                        lower_circuit_limit,
+                        week_52_high_price,
+                        week_52_low_price,
+                        packet_received_time,
+                        best_5_buy_data,
+                        best_5_sell_data,
+                        depth_20_buy_data,
+                        depth_20_sell_data
+                    )
+                    VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                """, (
+                    tick.subscription_mode,
+                    tick.exchange_type,
+                    tick.token,
+                    tick.sequence_number,
+                    tick.exchange_timestamp,
+                    tick.last_traded_price,
+                    tick.subscription_mode_val,
+                    tick.last_traded_quantity,
+                    tick.average_traded_price,
+                    tick.volume_trade_for_the_day,
+                    tick.total_buy_quantity,
+                    tick.total_sell_quantity,
+                    tick.open_price_of_the_day,
+                    tick.high_price_of_the_day,
+                    tick.low_price_of_the_day,
+                    tick.closed_price,
+                    tick.last_traded_timestamp,
+                    tick.open_interest,
+                    tick.open_interest_change_percentage,
+                    tick.upper_circuit_limit,
+                    tick.lower_circuit_limit,
+                    tick.week_52_high_price,
+                    tick.week_52_low_price,
+                    tick.packet_received_time,
+                    json.dumps(tick.best_5_buy_data),
+                    json.dumps(tick.best_5_sell_data),
+                    json.dumps(tick.depth_20_buy_data),
+                    json.dumps(tick.depth_20_sell_data),
+                ))
 
+            self.connection.commit()
+
+        except Exception:
+            self.connection.rollback()
+            raise
     def close(self):
         self.connection.close()
