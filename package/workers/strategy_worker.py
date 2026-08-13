@@ -1,22 +1,36 @@
-from queue import Queue
+from queue import Queue, Empty
+from threading import Event
 
 from package.logger import get_logger
 
 
 class StrategyWorker:
 
-    def __init__(self, queue: Queue):
-
+    def __init__(
+        self,
+        queue: Queue,
+        stop_event: Event,
+    ):
         self.queue = queue
+        self.stop_event = stop_event
+
         self.logger = get_logger(__name__)
 
     def run(self):
 
-        self.logger.info("Strategy worker started")
+        self.logger.info(
+            "Strategy worker started"
+        )
 
-        while True:
+        while not self.stop_event.is_set():
 
-            tick = self.queue.get()
+            try:
+                tick = self.queue.get(
+                    timeout=0.5
+                )
+
+            except Empty:
+                continue
 
             try:
 
@@ -36,14 +50,9 @@ class StrategyWorker:
 
                 self.queue.task_done()
 
+        self.logger.info(
+            "Strategy worker stopped"
+        )
+
     def process_tick(self, tick):
-
-        # Future:
-        #
-        # signal = strategy.process(tick)
-        #
-        # if signal:
-        #     order_manager.execute(signal)
-
         pass
-    

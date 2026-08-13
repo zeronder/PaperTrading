@@ -16,17 +16,18 @@ setup_logging()
 
 logger = get_logger(__name__)
 
+stop_event = threading.Event()
 
 strategy_queue = Queue(maxsize=1000)
 database_queue = Queue(maxsize=1000)
 
 
 database_worker = DatabaseWorker(
-    database_queue
+    database_queue, stop_event
 )
 
 strategy_worker = StrategyWorker(
-    strategy_queue
+    strategy_queue, stop_event
 )
 
 
@@ -101,9 +102,17 @@ def main():
     except KeyboardInterrupt:
 
         logger.info(
-            "Paper Trading Application Stopped"
+            "Shutdown requested"
         )
 
+        stop_event.set()
+
+        logger.info("Waiting for workers to stop...")
+
+        database_thread.join()
+        strategy_thread.join()
+
+        logger.info("Paper Trading Application Stopped")
 
 if __name__ == "__main__":
     main()
