@@ -4,6 +4,7 @@ from threading import Event
 from package.logger import get_logger
 
 
+
 class StrategyWorker:
 
     def __init__(
@@ -11,10 +12,17 @@ class StrategyWorker:
         queue: Queue,
         stop_event: Event,
     ):
+
         self.queue = queue
         self.stop_event = stop_event
 
         self.logger = get_logger(__name__)
+
+        # --------------------------------
+        # Candle Builder
+        # --------------------------------
+
+        
 
     def run(self):
 
@@ -25,11 +33,13 @@ class StrategyWorker:
         while not self.stop_event.is_set():
 
             try:
+
                 tick = self.queue.get(
                     timeout=0.5
                 )
 
             except Empty:
+
                 continue
 
             try:

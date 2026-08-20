@@ -11,8 +11,8 @@ default_correlation_id = "streaming_mcx"
 default_mode = 1 #1 LTP,  2 QUOTE, 3 SNAP_QUOTE
 default_token_list = [
     {
-        "exchangeType": 5,      #1 NSE_CASH, 
-        "tokens": ["483079"]
+        "exchangeType": 5,      #1 NSE_CM, 2 NSE_FO, 3 BSE_CM, 4 BSE_FO, MCX_FO 
+        "tokens": ["562056"]    
     }
 ]
 # account settings

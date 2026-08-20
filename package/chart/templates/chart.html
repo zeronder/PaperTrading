@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        PaperTrading Live Chart
+    </title>
+
+    <style>
+
+        html,
+        body {
+
+            margin: 0;
+
+            padding: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            background: #111;
+
+            overflow: hidden;
+        }
+
+        #chart {
+
+            width: 100%;
+
+            height: 100%;
+        }
+
+        #status {
+
+            position: fixed;
+
+            top: 10px;
+
+            left: 10px;
+
+            z-index: 1000;
+
+            padding: 7px 12px;
+
+            font-family: Arial, sans-serif;
+
+            font-size: 12px;
+
+            background:
+                rgba(
+                    0,
+                    0,
+                    0,
+                    0.80
+                );
+
+            color: #aaa;
+
+            border-radius: 4px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+    <div id="chart"></div>
+
+    <div id="status">
+        Starting...
+    </div>
+
+
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+
+    <script>
+
+        // ====================================================
+        // Chart
+        // ====================================================
+
+        const chart =
+            LightweightCharts.createChart(
+                document.getElementById(
+                    "chart"
+                ),
+                {
+
+                    width:
+                        window.innerWidth,
+
+                    height:
+                        window.innerHeight,
+
+                    layout: {
+
+                        background: {
+                            color: "#111"
+                        },
+
+                        textColor: "#DDD"
+                    },
+
+                    grid: {
+
+                        vertLines: {
+                            color: "#222"
+                        },
+
+                        horzLines: {
+                            color: "#222"
+                        }
+                    },
+
+                    timeScale: {
+
+                        timeVisible: true,
+
+                        secondsVisible: false,
+
+                        rightOffset: 5
+                    }
+                }
+            );
+
+
+        // ====================================================
+        // Candlestick Series
+        // ====================================================
+
+        const candleSeries =
+            chart.addSeries(
+                LightweightCharts.CandlestickSeries,
+                {
+
+                    upColor: "#26a69a",
+
+                    downColor: "#ef5350",
+
+                    borderVisible: false,
+
+                    wickUpColor: "#26a69a",
+
+                    wickDownColor: "#ef5350"
+                }
+            );
+
+
+        // ====================================================
+        // Status
+        // ====================================================
+
+        const status =
+            document.getElementById(
+                "status"
+            );
+
+
+        function setStatus(
+            text
+        ) {
+
+            status.textContent =
+                text;
+        }
+
+
+        // ====================================================
+        // Last candle timestamp
+        // ====================================================
+
+        let lastCandleTime = null;
+
+
+        // ====================================================
+        // Tick counter
+        // ====================================================
+
+        let updateCount = 0;
+
+
+        // ====================================================
+        // Load Historical Candles
+        // ====================================================
+
+        async function loadInitialCandles() {
+
+            try {
+
+                setStatus(
+                    "Loading candles..."
+                );
+
+                const response =
+                    await fetch(
+                        "/api/candles",
+                        {
+                            cache: "no-store"
+                        }
+                    );
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "HTTP " +
+                        response.status
+                    );
+                }
+
+                const candles =
+                    await response.json();
+
+                if (
+                    !Array.isArray(
+                        candles
+                    )
+                ) {
+
+                    throw new Error(
+                        "Invalid candle response"
+                    );
+                }
+
+
+                // --------------------------------------------
+                // Remove invalid candles
+                // --------------------------------------------
+
+                const validCandles =
+                    candles.filter(
+                        function(candle) {
+
+                            return (
+                                candle &&
+                                Number.isFinite(
+                                    Number(
+                                        candle.time
+                                    )
+                                ) &&
+                                Number.isFinite(
+                                    Number(
+                                        candle.open
+                                    )
+                                ) &&
+                                Number.isFinite(
+                                    Number(
+                                        candle.high
+                                    )
+                                ) &&
+                                Number.isFinite(
+                                    Number(
+                                        candle.low
+                                    )
+                                ) &&
+                                Number.isFinite(
+                                    Number(
+                                        candle.close
+                                    )
+                                )
+                            );
+
+                        }
+                    );
+
+
+                // --------------------------------------------
+                // Set historical data
+                // --------------------------------------------
+
+                candleSeries.setData(
+                    validCandles.map(
+                        function(candle) {
+
+                            return {
+
+                                time:
+                                    Number(
+                                        candle.time
+                                    ),
+
+                                open:
+                                    Number(
+                                        candle.open
+                                    ),
+
+                                high:
+                                    Number(
+                                        candle.high
+                                    ),
+
+                                low:
+                                    Number(
+                                        candle.low
+                                    ),
+
+                                close:
+                                    Number(
+                                        candle.close
+                                    )
+                            };
+
+                        }
+                    )
+                );
+
+
+                if (
+                    validCandles.length > 0
+                ) {
+
+                    lastCandleTime =
+                        Number(
+                            validCandles[
+                                validCandles.length - 1
+                            ].time
+                        );
+
+                    chart
+                        .timeScale()
+                        .fitContent();
+                }
+
+
+                console.log(
+                    "INITIAL CANDLES",
+                    validCandles.length
+                );
+
+
+                setStatus(
+                    "Historical loaded"
+                );
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Historical candle loading failed:",
+                    error
+                );
+
+                setStatus(
+                    "Historical data error"
+                );
+
+                throw error;
+            }
+        }
+
+
+        // ====================================================
+        // SSE
+        // ====================================================
+
+        let eventSource = null;
+
+
+        // ====================================================
+        // Connect live stream
+        // ====================================================
+
+        function connectLiveStream() {
+
+            if (
+                eventSource !== null
+            ) {
+
+                console.warn(
+                    "SSE already connected"
+                );
+
+                return;
+            }
+
+
+            setStatus(
+                "Connecting live stream..."
+            );
+
+
+            eventSource =
+                new EventSource(
+                    "/api/candle-stream"
+                );
+
+
+            // =================================================
+            // Connected
+            // =================================================
+
+            eventSource.addEventListener(
+                "connected",
+                function(event) {
+
+                    console.log(
+                        "SSE CONNECTED",
+                        event.data
+                    );
+
+                    setStatus(
+                        "LIVE | Waiting for tick..."
+                    );
+                }
+            );
+
+
+            // =================================================
+            // Candle Event
+            // =================================================
+
+            eventSource.addEventListener(
+                "candle",
+                function(event) {
+
+                    try {
+
+                        const message =
+                            JSON.parse(
+                                event.data
+                            );
+
+
+                        if (
+                            !message.candle
+                        ) {
+
+                            console.warn(
+                                "SSE candle missing"
+                            );
+
+                            return;
+                        }
+
+
+                        const candle =
+                            message.candle;
+
+
+                        const chartCandle = {
+
+                            time:
+                                Number(
+                                    candle.time
+                                ),
+
+                            open:
+                                Number(
+                                    candle.open
+                                ),
+
+                            high:
+                                Number(
+                                    candle.high
+                                ),
+
+                            low:
+                                Number(
+                                    candle.low
+                                ),
+
+                            close:
+                                Number(
+                                    candle.close
+                                )
+                        };
+
+
+                        // ----------------------------------------
+                        // Validate
+                        // ----------------------------------------
+
+                        if (
+                            !Number.isFinite(
+                                chartCandle.time
+                            )
+                        ) {
+
+                            return;
+                        }
+
+
+                        if (
+                            !Number.isFinite(
+                                chartCandle.open
+                            ) ||
+                            !Number.isFinite(
+                                chartCandle.high
+                            ) ||
+                            !Number.isFinite(
+                                chartCandle.low
+                            ) ||
+                            !Number.isFinite(
+                                chartCandle.close
+                            )
+                        ) {
+
+                            console.warn(
+                                "Invalid candle values",
+                                chartCandle
+                            );
+
+                            return;
+                        }
+
+
+                        // ----------------------------------------
+                        // IMPORTANT
+                        //
+                        // update() replaces the existing candle
+                        // when timestamp is the same.
+                        //
+                        // Therefore every tick updates the
+                        // current 1-minute candle.
+                        // ----------------------------------------
+
+                        candleSeries.update(
+                            chartCandle
+                        );
+
+
+                        lastCandleTime =
+                            chartCandle.time;
+
+
+                        updateCount++;
+
+
+                        setStatus(
+                            "LIVE | Tick updates: "
+                            +
+                            updateCount
+                            +
+                            " | "
+                            +
+                            message.type
+                        );
+
+
+                        console.debug(
+                            "CHART TICK UPDATE",
+                            {
+                                type:
+                                    message.type,
+
+                                time:
+                                    chartCandle.time,
+
+                                open:
+                                    chartCandle.open,
+
+                                high:
+                                    chartCandle.high,
+
+                                low:
+                                    chartCandle.low,
+
+                                close:
+                                    chartCandle.close,
+
+                                updates:
+                                    updateCount
+                            }
+                        );
+
+                    }
+                    catch (error) {
+
+                        console.error(
+                            "SSE candle processing failed:",
+                            error
+                        );
+                    }
+
+                }
+            );
+
+
+            // =================================================
+            // Generic message fallback
+            // =================================================
+
+            eventSource.onmessage =
+                function(event) {
+
+                    console.debug(
+                        "SSE MESSAGE",
+                        event.data
+                    );
+                };
+
+
+            // =================================================
+            // Error
+            // =================================================
+
+            eventSource.onerror =
+                function(error) {
+
+                    console.warn(
+                        "SSE connection error",
+                        error
+                    );
+
+
+                    setStatus(
+                        "SSE reconnecting..."
+                    );
+
+
+                    /*
+                     * Do NOT create another EventSource.
+                     *
+                     * Browser automatically reconnects.
+                     */
+                };
+
+        }
+
+
+        // ====================================================
+        // Start
+        // ====================================================
+
+        async function startChart() {
+
+            try {
+
+                // --------------------------------------------
+                // 1. Historical data
+                // --------------------------------------------
+
+                await loadInitialCandles();
+
+
+                // --------------------------------------------
+                // 2. Live stream
+                // --------------------------------------------
+
+                connectLiveStream();
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Chart startup failed:",
+                    error
+                );
+
+                setStatus(
+                    "Chart startup failed"
+                );
+            }
+        }
+
+
+        // ====================================================
+        // Start
+        // ====================================================
+
+        startChart();
+
+
+        // ====================================================
+        // Resize
+        // ====================================================
+
+        window.addEventListener(
+            "resize",
+            function() {
+
+                chart.resize(
+                    window.innerWidth,
+                    window.innerHeight
+                );
+
+            }
+        );
+
+
+        // ====================================================
+        // Cleanup
+        // ====================================================
+
+        window.addEventListener(
+            "beforeunload",
+            function() {
+
+                if (
+                    eventSource !== null
+                ) {
+
+                    eventSource.close();
+
+                    eventSource = null;
+                }
+
+            }
+        );
+
+    </script>
+
+</body>
+
+</html>
